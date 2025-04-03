@@ -110,6 +110,7 @@ public struct RefreshableScrollView<Content: View, RefreshView: View>: View {
     @State private var isRefresherVisible = true
     @State private var isFingerDown = false
     @State private var canRefresh = true
+    @State private var offsetIsPositive = true
     
     init(
         axes: Axis.Set = .vertical,
@@ -156,7 +157,7 @@ public struct RefreshableScrollView<Content: View, RefreshView: View>: View {
     }
     
     private var showRefreshControls: Bool {
-        return isFingerDown || isRefresherVisible
+        return offsetIsPositive && (isFingerDown || isRefresherVisible)
     }
     
     @ViewBuilder
@@ -217,6 +218,7 @@ public struct RefreshableScrollView<Content: View, RefreshView: View>: View {
                     }
                     // renders over content
                     refreshSpinner
+                        .padding(.top, style == .overlay ? 20 : 0 )
                 }
             }
             .introspect(.scrollView, on: .iOS(.v14, .v15, .v16, .v17, .v18)) { scrollView in
@@ -236,10 +238,16 @@ public struct RefreshableScrollView<Content: View, RefreshView: View>: View {
     }
     
     private func offsetChanged(_ val: CGFloat) {
+        
         isFingerDown = isTracking
         distance = val - headerInset
         state.dragPosition = normalize(from: 0, to: config.refreshAt, by: distance)
-        
+        switch style {
+        case .overlay:
+            offsetIsPositive = val > 0
+        default:
+            break
+        }
         // If the refresh state has settled, we are not touching the screen, and the offset has settled, we can signal the view to update itself.
         if canRefresh, !isFingerDown, distance <= 0 {
             renderLock = false
